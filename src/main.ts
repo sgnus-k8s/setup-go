@@ -11,7 +11,7 @@ import os from 'os';
 import * as custom from "./custom/cache";
 
 export async function run() {
-  const baseTag = 'v5.4.0';
+  const baseTag = 'v5.5.0';
   core.info(`sgnus-k8s/setup-go@use-cache: based on actions/setup-go@${baseTag}`);
   try {
     if (core.getBooleanInput('custom') && !custom.isFeatureAvailable()) {
