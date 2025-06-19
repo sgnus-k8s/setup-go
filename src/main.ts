@@ -8,9 +8,15 @@ import {isCacheFeatureAvailable} from './cache-utils';
 import cp from 'child_process';
 import fs from 'fs';
 import os from 'os';
+import * as custom from "./custom/cache";
 
 export async function run() {
+  const baseTag = 'v5.4.0';
+  core.info(`sgnus-k8s/setup-go@use-cache: based on actions/setup-go@${baseTag}`);
   try {
+    if (core.getBooleanInput('custom') && !custom.isFeatureAvailable()) {
+        return;
+    }
     //
     // versionSpec is optional.  If supplied, install / use from the tool cache
     // If not supplied then problem matchers will still be setup.  Useful for self-hosted.
@@ -64,7 +70,7 @@ export async function run() {
     const goPath = await io.which('go');
     const goVersion = (cp.execSync(`${goPath} version`) || '').toString();
 
-    if (cache && isCacheFeatureAvailable()) {
+    if ((cache && isCacheFeatureAvailable()) || (cache && core.getBooleanInput('custom'))) {
       const packageManager = 'default';
       const cacheDependencyPath = core.getInput('cache-dependency-path');
       try {

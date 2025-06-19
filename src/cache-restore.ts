@@ -7,6 +7,7 @@ import fs from 'fs';
 import {State, Outputs} from './constants';
 import {PackageManagerInfo} from './package-managers';
 import {getCacheDirectoryPath, getPackageManagerInfo} from './cache-utils';
+import * as custom from "./custom/cache";
 
 export const restoreCache = async (
   versionSpec: string,
@@ -37,7 +38,12 @@ export const restoreCache = async (
 
   core.saveState(State.CachePrimaryKey, primaryKey);
 
-  const cacheKey = await cache.restoreCache(cachePaths, primaryKey);
+  let cacheKey;
+  if (core.getBooleanInput('custom')) {
+    cacheKey = await custom.restoreCache(cachePaths, primaryKey);
+  } else { 
+    cacheKey = await cache.restoreCache(cachePaths, primaryKey);
+  }
   core.setOutput(Outputs.CacheHit, Boolean(cacheKey));
 
   if (!cacheKey) {

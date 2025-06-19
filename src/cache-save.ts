@@ -3,6 +3,7 @@ import * as cache from '@actions/cache';
 import fs from 'fs';
 import {State} from './constants';
 import {getCacheDirectoryPath, getPackageManagerInfo} from './cache-utils';
+import * as custom from "./custom/cache";
 
 // Catch and log any unhandled exceptions.  These exceptions can leak out of the uploadChunk method in
 // @actions/toolkit when a failed upload closes the file descriptor causing any in-process reads to
@@ -16,6 +17,8 @@ process.on('uncaughtException', e => {
 // - https://github.com/actions/setup-node/issues/878
 // https://github.com/actions/cache/pull/1217
 export async function run(earlyExit?: boolean) {
+  const baseTag = 'v5.4.0';
+  core.info(`sgnus-k8s/setup-go@use-cache: based on actions/setup-go@${baseTag}`);
   try {
     const cacheInput = core.getBooleanInput('cache');
     if (cacheInput) {
@@ -78,7 +81,12 @@ const cachePackages = async () => {
     return;
   }
 
-  const cacheId = await cache.saveCache(cachePaths, primaryKey);
+  let cacheId;
+  if (core.getBooleanInput('custom')) {
+    cacheId = await custom.saveCache(cachePaths, primaryKey);
+  } else {
+    cacheId = await cache.saveCache(cachePaths, primaryKey);
+  }
   if (cacheId === -1) {
     return;
   }
