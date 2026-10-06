@@ -1,13 +1,15 @@
 import * as core from '@actions/core';
 import * as io from '@actions/io';
-import * as installer from './installer';
+import * as installer from './installer.js';
 import * as semver from 'semver';
 import path from 'path';
-import {restoreCache} from './cache-restore';
-import {isCacheFeatureAvailable} from './cache-utils';
+import {fileURLToPath} from 'url';
+import {restoreCache} from './cache-restore.js';
+import {isCacheFeatureAvailable} from './cache-utils.js';
 import cp from 'child_process';
 import fs from 'fs';
 import os from 'os';
+import {Architecture} from './types.js';
 import * as custom from "./custom/cache";
 
 export async function run() {
@@ -22,14 +24,15 @@ export async function run() {
     // If not supplied then problem matchers will still be setup.  Useful for self-hosted.
     //
     const versionSpec = resolveVersionInput();
+    setGoToolchain();
 
     const cache = core.getBooleanInput('cache');
     core.info(`Setup go version spec ${versionSpec}`);
 
-    let arch = core.getInput('architecture');
+    let arch = core.getInput('architecture') as Architecture;
 
     if (!arch) {
-      arch = os.arch();
+      arch = os.arch() as Architecture;
     }
 
     if (versionSpec) {
@@ -38,11 +41,21 @@ export async function run() {
 
       const checkLatest = core.getBooleanInput('check-latest');
 
+      const goDownloadBaseUrl =
+        core.getInput('go-download-base-url') ||
+        process.env['GO_DOWNLOAD_BASE_URL'] ||
+        undefined;
+
+      if (goDownloadBaseUrl) {
+        core.info(`Using custom Go download base URL: ${goDownloadBaseUrl}`);
+      }
+
       const installDir = await installer.getGo(
         versionSpec,
         checkLatest,
         auth,
-        arch
+        arch,
+        goDownloadBaseUrl
       );
 
       const installDirVersion = path.basename(path.dirname(installDir));
@@ -85,7 +98,11 @@ export async function run() {
     }
 
     // add problem matchers
-    const matchersPath = path.join(__dirname, '../..', 'matchers.json');
+    const matchersPath = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '../..',
+      'matchers.json'
+    );
     core.info(`##[add-matcher]${matchersPath}`);
 
     // output the version actually being used
@@ -165,4 +182,21 @@ function resolveVersionInput(): string {
   }
 
   return version;
+}
+
+function setGoToolchain() {
+  // docs: https://go.dev/doc/toolchain
+  // "local indicates the bundled Go toolchain (the one that shipped with the go command being run)"
+  // this is so any 'go' command is run with the selected Go version
+  // and doesn't trigger a toolchain download and run commands with that
+  // see e.g. issue #424
+  // and a similar discussion: https://github.com/docker-library/golang/issues/472.
+  // Set the value in process env so any `go` commands run as child-process
+  // don't cause toolchain downloads
+  process.env[installer.GOTOOLCHAIN_ENV_VAR] = installer.GOTOOLCHAIN_LOCAL_VAL;
+  // and in the runner env so e.g. a user running `go mod tidy` won't cause it
+  core.exportVariable(
+    installer.GOTOOLCHAIN_ENV_VAR,
+    installer.GOTOOLCHAIN_LOCAL_VAL
+  );
 }
