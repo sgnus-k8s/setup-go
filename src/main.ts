@@ -10,7 +10,7 @@ import cp from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import {Architecture} from './types.js';
-import * as custom from "./custom/cache";
+import * as custom from "./custom/cache.js";
 
 export async function run() {
   const baseTag = 'v7.0.0';
