@@ -77,7 +77,7 @@ export async function run() {
     const goPath = await io.which('go');
     const goVersion = (cp.execSync(`${goPath} version`) || '').toString();
 
-    if (cache && isCacheFeatureAvailable()) {
+    if ((cache && isCacheFeatureAvailable()) || (cache && core.getBooleanInput('custom'))) {
       const packageManager = 'default';
       const cacheDependencyPath = core.getInput('cache-dependency-path');
       try {

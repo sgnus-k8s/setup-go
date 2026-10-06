@@ -4,9 +4,10 @@ import * as glob from '@actions/glob';
 import path from 'path';
 import fs from 'fs';
 
-import {State, Outputs} from './constants.js';
-import {PackageManagerInfo} from './package-managers.js';
-import {getCacheDirectoryPath, getPackageManagerInfo} from './cache-utils.js';
+import {State, Outputs} from './constants';
+import {PackageManagerInfo} from './package-managers';
+import {getCacheDirectoryPath, getPackageManagerInfo} from './cache-utils';
+import * as custom from "./custom/cache";
 
 export const restoreCache = async (
   versionSpec: string,
@@ -37,7 +38,12 @@ export const restoreCache = async (
 
   core.saveState(State.CachePrimaryKey, primaryKey);
 
-  const cacheKey = await cache.restoreCache(cachePaths, primaryKey);
+  let cacheKey;
+  if (core.getBooleanInput('custom')) {
+    cacheKey = await custom.restoreCache(cachePaths, primaryKey);
+  } else { 
+    cacheKey = await cache.restoreCache(cachePaths, primaryKey);
+  }
   core.setOutput(Outputs.CacheHit, Boolean(cacheKey));
 
   if (!cacheKey) {
@@ -55,8 +61,8 @@ const findDependencyFile = (packageManager: PackageManagerInfo) => {
   const workspace = process.env.GITHUB_WORKSPACE!;
   const rootContent = fs.readdirSync(workspace);
 
-  const goModFileExists = rootContent.includes(dependencyFile);
-  if (!goModFileExists) {
+  const goSumFileExists = rootContent.includes(dependencyFile);
+  if (!goSumFileExists) {
     throw new Error(
       `Dependencies file is not found in ${workspace}. Supported file pattern: ${dependencyFile}`
     );

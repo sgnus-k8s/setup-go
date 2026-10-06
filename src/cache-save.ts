@@ -1,8 +1,9 @@
 import * as core from '@actions/core';
 import * as cache from '@actions/cache';
 import fs from 'fs';
-import {State} from './constants.js';
-import {getCacheDirectoryPath, getPackageManagerInfo} from './cache-utils.js';
+import {State} from './constants';
+import {getCacheDirectoryPath, getPackageManagerInfo} from './cache-utils';
+import * as custom from "./custom/cache";
 
 // Catch and log any unhandled exceptions.  These exceptions can leak out of the uploadChunk method in
 // @actions/toolkit when a failed upload closes the file descriptor causing any in-process reads to
@@ -15,8 +16,9 @@ process.on('uncaughtException', e => {
 // Added early exit to resolve issue with slow post action step:
 // - https://github.com/actions/setup-node/issues/878
 // https://github.com/actions/cache/pull/1217
-
 export async function run(earlyExit?: boolean) {
+  const baseTag = 'v7.0.0';
+  core.info(`sgnus-k8s/setup-go@use-cache: based on actions/setup-go@${baseTag}`);
   try {
     const cacheInput = core.getBooleanInput('cache');
     if (cacheInput) {
@@ -79,12 +81,13 @@ const cachePackages = async () => {
     return;
   }
 
-  const cacheId = await cache.saveCache(cachePaths, primaryKey);
+  let cacheId;
+  if (core.getBooleanInput('custom')) {
+    cacheId = await custom.saveCache(cachePaths, primaryKey);
+  } else {
+    cacheId = await cache.saveCache(cachePaths, primaryKey);
+  }
   if (cacheId === -1) {
-    // saveCache returns -1 without throwing when the cache was not saved, e.g.
-    // a reserve collision or a read-only token (fork PR). @actions/cache has
-    // already logged the reason at the appropriate severity, so just trace it.
-    core.debug(`Cache was not saved for the key: ${primaryKey}`);
     return;
   }
   core.info(`Cache saved with the key: ${primaryKey}`);
