@@ -10,6 +10,7 @@ import cp from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import {Architecture} from './types.js';
+import * as custom from "./custom/cache";
 
 export async function run() {
   try {
